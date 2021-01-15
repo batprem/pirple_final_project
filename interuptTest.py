@@ -1,7 +1,7 @@
 import signal
 
 
-class Interupt(BaseException):
+class Interrupt(BaseException):
     """
     Help interuption
     """
@@ -16,7 +16,7 @@ def interrupted(signum, frame):
     :return:
     """
     print("Timeout!")
-    raise Interupt("test")
+    raise Interrupt("test")
 
 signal.signal(signal.SIGALRM, interrupted)
 s = 1
@@ -24,5 +24,5 @@ while s != '0':
     signal.alarm(1)
     try:
         s = input("::>")
-    except Interupt:
+    except Interrupt:
         print("You are interrupted.")

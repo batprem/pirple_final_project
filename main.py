@@ -8,13 +8,12 @@ Reference:
 """
 
 from flask import Flask, request
-from Casino import Casino
+from Casino import *
 
-casio = Casino()
 challengeTable = {}
 app = Flask(__name__)
 
-table: Casino.Table
+table: Table
 
 
 @app.route("/player-register", methods=["POST"])
@@ -26,9 +25,9 @@ def register_player():
 	json_data = request.json
 	player_name = json_data.get('player_name')
 	player_credits = json_data.get('credits')
-	player = Casino.Player(name=player_name, player_credits=player_credits)
-	player_id = len(casio.players)
-	casio.players.append(player)
+	player = Player(name=player_name, player_credits=player_credits)
+	player_id = len(casino.players)
+	casino.players.append(player)
 
 	return {
 		"server_text": f"Welcome {player_name}! Your id is {player_id}",
@@ -46,8 +45,8 @@ def get_players():
 	}
 	"""
 	return {
-		"server_text": "Here are players are in our casio",
-		"players": {i: player.name for i, player in enumerate(casio.players)}
+		"server_text": "Here are players are in our casino",
+		"players": {i: player.name for i, player in enumerate(casino.players)}
 	}
 
 
@@ -91,7 +90,7 @@ def check_challenge_table():
 		]
 		if challenges_to_player:
 			challenge_list = {
-				int(challenger_id): casio.players[challenger_id].name
+				int(challenger_id): casino.players[challenger_id].name
 				for challenger_id
 				in challenges_to_player
 			}
@@ -117,7 +116,7 @@ def response_to_challenge():
 	accept_id = json_data.get('accept_id')
 
 	if (accept_id in challengeTable) and (challengeTable[accept_id] == player_id):
-		table = casio.Table(casio.players[player_id], casio.players[accept_id])
+		table = Table(casino.players[player_id], casino.players[accept_id])
 		return {"server_text": "Let's play!", "start_game": True}
 	else:
 		return {"server_text": "Invalid challenge id", "start_game": False}
