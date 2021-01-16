@@ -67,6 +67,7 @@ class Player:
 		self.name = name
 		self.cards_on_hands = []
 		self.credits = player_credits
+		self.isPlayerTurn = False
 
 	def draw_a_card(self, playing_deck):
 		"""

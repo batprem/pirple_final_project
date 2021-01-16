@@ -79,7 +79,7 @@ def check_challenge_table():
 	"""
 	json_data = request.json
 	player_id = json_data.get('player_id')
-
+	print(challengeTable)
 	if player_id >= 0:
 		# Seeking
 		challenges_to_player = [

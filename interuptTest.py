@@ -20,9 +20,14 @@ def interrupted(signum, frame):
 
 signal.signal(signal.SIGALRM, interrupted)
 s = 1
-while s != '0':
-    signal.alarm(1)
-    try:
-        s = input("::>")
-    except Interrupt:
-        print("You are interrupted.")
+def test():
+    while s != '0':
+        signal.alarm(1)
+        try:
+            s = input("::>")
+        except Interrupt:
+            return False
+            break
+
+
+print("end")
