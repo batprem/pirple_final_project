@@ -67,7 +67,9 @@ class Player:
 		self.name = name
 		self.cards_on_hands = []
 		self.credits = player_credits
-		self.isPlayerTurn = False
+		self.is_player_turn = False
+		self.win = False
+		self.status = ''
 
 	def draw_a_card(self, playing_deck):
 		"""
@@ -105,6 +107,16 @@ class Table:
 		print(f"Match making between {self.player_1.name} and {self.player_2.name}")
 		self.match_player()
 		self.score_master = ScoreMaster()
+		self.opponent = {
+			player_1.id: {
+				"id": player_2.id,
+				"name": player_2.name
+			},
+			player_2.id: {
+				"id": player_1.id,
+				"name": player_1.name
+			},
+		}
 
 
 class Casino:

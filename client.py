@@ -107,14 +107,88 @@ def check_players_accept_challenge(**params):
     return response.json()
 
 
-# State 1: Registering
-player = Player(input("Please enter player name: "), int(input("How much money do you have?: ")))
-register_response = register_player(player.name, player.credits)
-print(register_response["server_text"])
-player.id = register_response['player_id']
+def get_player_status(**params):
+    """
+
+    :param params:
+    :return:
+    """
+    url = f"{base_url}/get-player-status"
+    payload = json.dumps(params)
+    response = requests.request("POST", url, headers=HEADERS, data=payload)
+    return response.json()
 
 
-# State 2: In the Lobby
+def player_play(**params):
+    """
+
+    :param params:
+    :return:
+    """
+    url = f"{base_url}/player-play"
+    payload = json.dumps(params)
+    response = requests.request("POST", url, headers=HEADERS, data=payload)
+    return response.json()
+
+
+def show_help():
+    """
+
+    :return: True
+    """
+    print("""1. The players place their bets.
+2. The dealer shuffles and deals two cards to each player, ending with the dealer.
+3. Each player may stay or draw one card.
+4. The dealer may compare his or her hand against select players.
+5. The dealer may draw a card.
+6. The dealer compares his or her hand against the rest of the players.
+checkout: https://en.wikipedia.org/wiki/Pok_Deng for more information
+""")
+    resume = 'x'
+    while resume != '--resume':
+        resume = input("Type `--resume to continue the game")
+    return True
+
+
+def waiting_for_challenge_accept():
+    """
+
+    :return:
+    """
+
+    print("waiting for accept")
+    while True:
+        acceptance = check_players_accept_challenge(player_id=int(player.id))
+        print(acceptance['server_text'])
+        if acceptance['start_game']:
+            return acceptance['start_game']
+        time.sleep(5)
+
+
+def waiting_for_challenge():
+    """
+
+    :return:
+    """
+
+    print("waiting for challenge")
+    while True:
+        challenge_res = check_challenge_table(player_id=player.id)
+        print(challenge_res)
+        if 'challenge_list' in challenge_res:
+            # Found challenge
+            challenge_list = challenge_res['challenge_list']
+            challenge_id = input(challenge_res['server_text'])
+            if challenge_id in challenge_list:
+                print(f"You accepted challenge from {challenge_list[challenge_id]}")
+                challenge_response = response_to_challenge(player_id=int(player.id), accept_id=int(challenge_id))
+                print(challenge_response['server_text'])
+                start = challenge_response['start_game']
+                if start:
+                    return start
+        time.sleep(5)
+
+
 def lobby_state():
     """
 
@@ -139,48 +213,47 @@ def lobby_state():
         print("Player id not found")
 
 
+# State 1: Registering
+player = Player(input("Please enter player name: "), int(input("How much money do you have?: ")))
+register_response = register_player(player.name, player.credits)
+print(register_response["server_text"])
+player.id = register_response['player_id']
+
+# State 2: In the Lobby
 next_stage = lobby_state()
 # State 2.1: Waiting for challenge accept
 if next_stage == 'Waiting for challenge accept':
-    def waiting_for_challenge_accept():
-        """
-
-        :return:
-        """
-
-        print("waiting for accept")
-        while True:
-            acceptance = check_players_accept_challenge(player_id=int(player.id))
-            print(acceptance['server_text'])
-            if acceptance['start_game']:
-                return acceptance['start_game']
-            time.sleep(5)
-
     start_game = waiting_for_challenge_accept()
 # State 2.2: Waiting for challenge
 if next_stage == 'Waiting for challenge':
-    def waiting_for_challenge():
-        """
-
-        :return:
-        """
-
-        print("waiting for challenge")
-        while True:
-            challenge_res = check_challenge_table(player_id=player.id)
-            print(challenge_res)
-            if 'challenge_list' in challenge_res:
-                # Found challenge
-                challenge_list = challenge_res['challenge_list']
-                challenge_id = input(challenge_res['server_text'])
-                if challenge_id in challenge_list:
-                    print(f"You accepted challenge from {challenge_list[challenge_id]}")
-                    challenge_response = response_to_challenge(player_id=int(player.id), accept_id=int(challenge_id))
-                    print(challenge_response['server_text'])
-                    start = challenge_response['start_game']
-                    if start:
-                        return start
-            time.sleep(5)
-
-
     start_game = waiting_for_challenge()
+
+# Stage 3 Playing
+# Stage 3.1 first round
+while True:
+    player_status = get_player_status(player_id=player.id)
+    opponent = player_status['opponent']
+    player_turn = player_status['is_player_turn']
+    cards_on_hands = player_status['cards_on_hands']
+    print(cards_on_hands)
+    if player_turn:
+        print(f"{player.name}'s turn")
+        print(f"Please select 1 of these 3 options")
+        print(" 1. `draw` to draw another card")
+        print(" 2. `skip` to skip this turn")
+        print(" 3. `--help` to print help`")
+        option = input(">>> ")
+        if option == '--help':
+            show_help()
+        elif option in ['draw', 'skip']:
+            player_play_response = player_play(player_id=player.id, action=option)
+            print(player_play_response)
+            break
+        else:
+            continue
+    else:
+        print(f"{opponent['name']}'s turn")
+        print("Please wait")
+    time.sleep(5)
+
+# Stage 5: Calculate score

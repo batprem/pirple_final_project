@@ -7,6 +7,7 @@ Reference:
 	- https://en.wikipedia.org/wiki/Pok_Deng
 """
 
+import copy
 from flask import Flask, request
 from Casino import *
 
@@ -116,7 +117,20 @@ def response_to_challenge():
 	accept_id = json_data.get('accept_id')
 
 	if (accept_id in challengeTable) and (challengeTable[accept_id] == player_id):
-		table = Table(casino.players[player_id], casino.players[accept_id])
+		casino.table = Table(casino.players[player_id], casino.players[accept_id])
+		casino.deck = Deck()  # Initial deck
+		casino.deck.shuffle()  # Shuffle
+		# Player 1 Draw 2 cards
+		casino.players[player_id].draw_a_card(casino.deck)
+		casino.players[player_id].draw_a_card(casino.deck)
+
+		# Player 2 Draw 2 cards
+		casino.players[accept_id].draw_a_card(casino.deck)
+		casino.players[accept_id].draw_a_card(casino.deck)
+
+		# Set player 1 turn
+		casino.table.player_1.is_player_turn = True
+
 		return {"server_text": "Let's play!", "start_game": True}
 	else:
 		return {"server_text": "Invalid challenge id", "start_game": False}
@@ -131,10 +145,71 @@ def check_players_accept_challenge():
 	json_data = request.json
 	player_id = json_data.get('player_id')
 
-	if table.player_2.id == player_id:
-		return {"server_text": "Let's play!", "start_game": True}
-	else:
+	try:
+		if casino.table.player_2.id == player_id:
+			return {"server_text": "Let's play!", "start_game": True}
+	except AttributeError:
 		return {"server_text": "Keep waiting", "start_game": False}
+
+
+@app.route("/get-player-status", methods=["POST"])
+def get_player_status():
+	"""
+	Check whether player accepted challenge
+	:return: server_text, start_game
+	"""
+	json_data = request.json
+	player_id = json_data.get('player_id')
+	the_player = casino.players[player_id]
+	returning_data = copy.copy(the_player.__dict__)
+
+	cards_on_hands_dict = [card.__dict__ for card in the_player.cards_on_hands]
+	returning_data['cards_on_hands'] = cards_on_hands_dict
+	returning_data['opponent'] = casino.table.opponent[player_id]
+	return returning_data
+
+
+@app.route("/player-play", methods=["POST"])
+def player_play():
+	"""
+	Player play turn
+	:return: server_text, start_game
+	"""
+	json_data = request.json
+	player_id = json_data.get('player_id')
+	action = json_data.get('action')
+
+	if action == 'draw':
+		casino.players[player_id].draw_a_card(casino.deck)
+		server_text = "Draw another card"
+
+	elif action == 'skip':
+		server_text = "Skip your turn"
+	else:
+		server_text = ""
+
+	casino.players[player_id].is_player_turn = False
+	opponent_id = casino.table.opponent[player_id]['id']
+	casino.players[opponent_id].is_player_turn = True
+
+	return {
+		"server_text": server_text
+	}
+
+
+@app.route("/reset-challenge", methods=["POST"])
+def reset_challenge():
+	"""
+	Player play turn
+	:return: server_text, start_game
+	"""
+	global challengeTable
+	challengeTable = {}
+	del casino.table
+
+	return {
+		"server_text": "Table is reset"
+	}
 
 
 if __name__ == '__main__':
