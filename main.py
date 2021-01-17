@@ -15,6 +15,19 @@ challengeTable = {}
 app = Flask(__name__)
 
 table: Table
+Endgame = 2
+
+
+def get_score(player_id):
+	"""
+
+	:param player_id: get player score
+	"""
+	score, pok, deng = casino.table.score_master.cal_score(casino.players[player_id].cards_on_hands)
+	casino.players[player_id].score['score'] = score
+	casino.players[player_id].score['pok'] = pok
+	casino.players[player_id].score['deng'] = deng
+	casino.table.score_master.is_pok = pok
 
 
 @app.route("/player-register", methods=["POST"])
@@ -123,11 +136,11 @@ def response_to_challenge():
 		# Player 1 Draw 2 cards
 		casino.players[player_id].draw_a_card(casino.deck)
 		casino.players[player_id].draw_a_card(casino.deck)
-
+		get_score(player_id)
 		# Player 2 Draw 2 cards
 		casino.players[accept_id].draw_a_card(casino.deck)
 		casino.players[accept_id].draw_a_card(casino.deck)
-
+		get_score(accept_id)
 		# Set player 1 turn
 		casino.table.player_1.is_player_turn = True
 
@@ -175,13 +188,23 @@ def player_play():
 	Player play turn
 	:return: server_text, start_game
 	"""
+	global Endgame
 	json_data = request.json
 	player_id = json_data.get('player_id')
 	action = json_data.get('action')
 
+	score, pok, deng = casino.table.score_master.cal_score(casino.players[player_id].cards_on_hands)
+	casino.players[player_id].score['score'] = score
+	casino.players[player_id].score['pok'] = pok
+	casino.players[player_id].score['deng'] = deng
+	casino.table.score_master.is_pok = pok
+
 	if action == 'draw':
-		casino.players[player_id].draw_a_card(casino.deck)
-		server_text = "Draw another card"
+		if casino.table.score_master.is_pok:
+			casino.players[player_id].draw_a_card(casino.deck)
+			server_text = "Draw another card"
+		else:
+			server_text = "Some player get pok! Can't draw a new card"
 
 	elif action == 'skip':
 		server_text = "Skip your turn"
@@ -192,10 +215,15 @@ def player_play():
 	opponent_id = casino.table.opponent[player_id]['id']
 	casino.players[opponent_id].is_player_turn = True
 
-	return {
-		"server_text": server_text
-	}
-
+	Endgame -= 1
+	if Endgame:
+		return {
+			"server_text": server_text
+		}
+	else:
+		return {
+			"server_text": "Game over"
+		}
 
 @app.route("/reset-challenge", methods=["POST"])
 def reset_challenge():

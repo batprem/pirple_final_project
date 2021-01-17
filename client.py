@@ -239,9 +239,9 @@ while True:
     if player_turn:
         print(f"{player.name}'s turn")
         print(f"Please select 1 of these 3 options")
-        print(" 1. `draw` to draw another card")
-        print(" 2. `skip` to skip this turn")
-        print(" 3. `--help` to print help`")
+        print(" - `draw` to draw another card")
+        print(" - `skip` to skip this turn")
+        print(" - `--help` to print help`")
         option = input(">>> ")
         if option == '--help':
             show_help()

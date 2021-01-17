@@ -2,6 +2,7 @@
 Casino object
 """
 import random
+from collections import Counter
 
 players = []
 
@@ -14,8 +15,34 @@ class Card:
 	"""
 
 	def __init__(self, pips, index):
+		index = str(index)
 		self.pips = pips
 		self.index = index
+		self.indices = index
+
+	def __add__(self, card):
+		if self.index == 'A':
+			card_1_score = 1
+		elif self.index in ['J', 'Q', 'K']:
+			card_1_score = 0
+		else:
+			card_1_score = int(self.index)
+
+		if card.index == 'A':
+			card_2_score = 1
+		elif card.index in ['J', 'Q', 'K']:
+			card_2_score = 0
+		else:
+			card_2_score = int(card.index)
+		point = (card_1_score + card_2_score) % 10
+		deng = (self.pips + card.pips)
+		commutative_score = self.__class__(deng, point)
+		commutative_score.indices = self.index + card.index
+		commutative_score.indices.replace('1', 'A')
+		return commutative_score
+
+	def __repr__(self):
+		return str(self.__dict__)
 
 
 class Deck:
@@ -70,6 +97,7 @@ class Player:
 		self.is_player_turn = False
 		self.win = False
 		self.status = ''
+		self.score = {}
 
 	def draw_a_card(self, playing_deck):
 		"""
@@ -84,8 +112,62 @@ class ScoreMaster:
 	Who runs a game and controls rule
 	"""
 
-	def __init__(self):
+	def __init__(self, player_1: Player, player_2: Player):
+		self.player_1 = player_1
+		self.player_2 = player_2
+		self.is_pok = False
 		pass
+
+	@staticmethod
+	def check_sam_lueang(sum_score):
+		"""
+
+		:param sum_score:
+		:return: return if cards are Sam Lueang
+		"""
+		indices_list = ['A'] + [str(i) for i in range(2, 11)] + ['J', 'Q', 'K']
+		for index in range(11):
+			if all([i in sum_score.indices for i in indices_list[index: index + 3]]):
+				return True
+		return False
+
+	def check_deng(self, sum_score):
+		"""
+		Return deng score
+		:param sum_score:
+		:return:
+		"""
+		len_pips = len(sum_score.pips)
+		deng = 1
+		pok = False
+		if len_pips == 2:
+			# Check pok
+			if int(sum_score.index) >= 8:
+				pok = True
+				if list(Counter(sum_score.indices).values())[0] == 2:
+					deng = 2
+			elif list(Counter(sum_score.pips).values())[0] == 2:
+				deng = 2
+
+		elif len_pips == 3:
+			# Check Tong
+			if list(Counter(sum_score.indices).values())[0] == 3:
+				deng = 5
+			# Check sam lueang
+			elif self.check_sam_lueang(sum_score):
+				deng = 3
+		return pok, deng
+
+	def cal_score(self, cards_on_hands):
+		"""
+		Calcucalate score
+		:param cards_on_hands:
+		:return score (int), deng (int)
+		"""
+		sum_score = sum(cards_on_hands, Card('', 0))
+		pok, deng = self.check_deng(sum_score)
+		score = sum_score.index
+		return score, pok, deng
 
 
 class Table:
@@ -106,7 +188,7 @@ class Table:
 		self.deck = Deck()
 		print(f"Match making between {self.player_1.name} and {self.player_2.name}")
 		self.match_player()
-		self.score_master = ScoreMaster()
+		self.score_master = ScoreMaster(self.player_1, self.player_2)
 		self.opponent = {
 			player_1.id: {
 				"id": player_2.id,
