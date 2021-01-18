@@ -143,6 +143,8 @@ def response_to_challenge():
 		get_score(accept_id)
 		# Set player 1 turn
 		casino.table.player_1.is_player_turn = True
+		casino.players[player_id].endgame = False
+		casino.players[accept_id].endgame = False
 
 		return {"server_text": "Let's play!", "start_game": True}
 	else:
@@ -161,6 +163,8 @@ def check_players_accept_challenge():
 	try:
 		if casino.table.player_2.id == player_id:
 			return {"server_text": "Let's play!", "start_game": True}
+		else:
+			return {"server_text": "Player not found or didn't challenge you yet", "start_game": False}
 	except AttributeError:
 		return {"server_text": "Keep waiting", "start_game": False}
 
@@ -178,7 +182,10 @@ def get_player_status():
 
 	cards_on_hands_dict = [card.__dict__ for card in the_player.cards_on_hands]
 	returning_data['cards_on_hands'] = cards_on_hands_dict
-	returning_data['opponent'] = casino.table.opponent[player_id]
+	try:
+		returning_data['opponent'] = casino.table.opponent[player_id]
+	except AttributeError:
+		pass
 	return returning_data
 
 
@@ -221,19 +228,52 @@ def player_play():
 			"server_text": server_text
 		}
 	else:
+		if casino.players[player_id].score['score'] > casino.players[opponent_id].score['score']:
+			casino.players[player_id].win = True
+			bet = casino.players[player_id].score['deng']*100
+			casino.players[player_id].credits += bet
+			casino.players[opponent_id].credits -= bet
+
+		elif casino.players[player_id].score['score'] < casino.players[opponent_id].score['score']:
+			casino.players[opponent_id].win = True
+			bet = casino.players[opponent_id].score['deng'] * 100
+			casino.players[opponent_id].credits += bet
+			casino.players[player_id].credits -= bet
+
+		else:
+			if casino.players[player_id].score['deng'] >= casino.players[opponent_id].score['deng']:
+				casino.players[player_id].win = True
+				bet = casino.players[player_id].score['deng'] * 100
+				casino.players[player_id].credits += bet
+				casino.players[opponent_id].credits -= bet
+			else:
+				casino.players[opponent_id].win = True
+				bet = casino.players[opponent_id].score['deng'] * 100
+				casino.players[opponent_id].credits += bet
+				casino.players[player_id].credits -= bet
+		casino.players[player_id].cards_on_hands = []
+		casino.players[opponent_id].cards_on_hands = []
+		casino.players[player_id].endgame = True
+		casino.players[opponent_id].endgame = True
 		return {
 			"server_text": "Game over"
 		}
 
+
 @app.route("/reset-challenge", methods=["POST"])
 def reset_challenge():
 	"""
-	Player play turn
+	Reset to initial state
 	:return: server_text, start_game
 	"""
+	global Endgame
 	global challengeTable
 	challengeTable = {}
-	del casino.table
+	try:
+		del casino.table
+	except AttributeError:
+		pass
+	Endgame = 2
 
 	return {
 		"server_text": "Table is reset"

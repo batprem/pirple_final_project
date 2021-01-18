@@ -8,6 +8,7 @@ import json
 import requests
 import time
 
+
 HEADERS = {
     'Content-Type': 'application/json'
 }
@@ -131,6 +132,18 @@ def player_play(**params):
     return response.json()
 
 
+def reset_challenge(**params):
+    """
+
+    :param params:
+    :return:
+    """
+    url = f"{base_url}/reset-challenge"
+    payload = json.dumps(params)
+    response = requests.request("POST", url, headers=HEADERS, data=payload)
+    return response.json()
+
+
 def show_help():
     """
 
@@ -211,6 +224,7 @@ def lobby_state():
 
     else:
         print("Player id not found")
+        return lobby_state()
 
 
 # State 1: Registering
@@ -218,42 +232,72 @@ player = Player(input("Please enter player name: "), int(input("How much money d
 register_response = register_player(player.name, player.credits)
 print(register_response["server_text"])
 player.id = register_response['player_id']
-
-# State 2: In the Lobby
-next_stage = lobby_state()
-# State 2.1: Waiting for challenge accept
-if next_stage == 'Waiting for challenge accept':
-    start_game = waiting_for_challenge_accept()
-# State 2.2: Waiting for challenge
-if next_stage == 'Waiting for challenge':
-    start_game = waiting_for_challenge()
-
-# Stage 3 Playing
-# Stage 3.1 first round
 while True:
-    player_status = get_player_status(player_id=player.id)
-    opponent = player_status['opponent']
-    player_turn = player_status['is_player_turn']
-    cards_on_hands = player_status['cards_on_hands']
-    print(cards_on_hands)
-    if player_turn:
-        print(f"{player.name}'s turn")
-        print(f"Please select 1 of these 3 options")
-        print(" - `draw` to draw another card")
-        print(" - `skip` to skip this turn")
-        print(" - `--help` to print help`")
-        option = input(">>> ")
-        if option == '--help':
-            show_help()
-        elif option in ['draw', 'skip']:
-            player_play_response = player_play(player_id=player.id, action=option)
-            print(player_play_response)
-            break
-        else:
-            continue
-    else:
-        print(f"{opponent['name']}'s turn")
-        print("Please wait")
-    time.sleep(5)
+    # State 2: In the Lobby
+    next_stage = lobby_state()
+    # State 2.1: Waiting for challenge accept
+    if next_stage == 'Waiting for challenge accept':
+        start_game = waiting_for_challenge_accept()
+    # State 2.2: Waiting for challenge
+    if next_stage == 'Waiting for challenge':
+        start_game = waiting_for_challenge()
 
-# Stage 5: Calculate score
+    # Stage 3 Playing
+    # Stage 3.1 first round
+    while True:
+        player_status = get_player_status(player_id=player.id)
+        opponent = player_status['opponent']
+        player_turn = player_status['is_player_turn']
+        cards_on_hands = player_status['cards_on_hands']
+        print("Your cards")
+        for card in cards_on_hands:
+            print(f"Pip: {card['pips']}")
+            print(f"Index: {card['index']}")
+            print('-'*36)
+        if player_turn:
+            print(f"{player.name}'s turn")
+            print(f"Please select 1 of these 3 options")
+            print(" - `draw` to draw another card")
+            print(" - `skip` to skip this turn")
+            print(" - `--help` to print help`")
+            option = input(">>> ")
+            if option == '--help':
+                show_help()
+            elif option in ['draw', 'skip']:
+                player_play_response = player_play(player_id=player.id, action=option)
+                print(player_play_response)
+
+                # Get player status
+                player_status = get_player_status(player_id=player.id)
+                opponent = player_status['opponent']
+                player_turn = player_status['is_player_turn']
+                cards_on_hands = player_status['cards_on_hands']
+                print("Your cards")
+                for card in cards_on_hands:
+                    print(f"Pip: {card['pips']}")
+                    print(f"Index: {card['index']}")
+                    print('-' * 36)
+                break
+            else:
+                continue
+        else:
+            print(f"{opponent['name']}'s turn")
+            print("Please wait")
+        time.sleep(5)
+
+    # Stage 4: Calculate score
+    print("Wait for another's play")
+    while True:
+        player_status = get_player_status(player_id=player.id)
+        if player_status.get('endgame'):
+            break
+    if player_status['win']:
+        print(f"{player_status['name']} WIN!")
+        print(f"Your current credit's {player_status['credits']}")
+    else:
+        print(f"{opponent['name']} WIN!")
+        print(f"Your current credit's {player_status['credits']}")
+
+    print(f"Your score is {player_status['score']}")
+
+    print(reset_challenge())
