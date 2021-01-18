@@ -1,4 +1,4 @@
-This repo is available on https://github.com/batprem/pirple_final_project/edit/master/README.md
+This repo is available on https://github.com/batprem/pirple_final_project/
 
 # pirple_final_project
 The final project for the online Python course "Pirpie.com"
